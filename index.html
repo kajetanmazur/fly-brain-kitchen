@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fly Brain Kitchen</title>
+<style>
+  :root { --bg:#14161c; --panel:#1d2029; --ink:#e8e6df; --dim:#8a8f9c; --line:#2c303b;
+          --sweet:#f2c14e; --bitter:#b07a4a; --antenna:#6cc4d9; --loom:#e5534b;
+          --feed:#f2c14e; --escape:#e5534b; --turn:#c38ff0; --groom:#6cc4d9; --brain:#58d68d; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.35 ui-monospace, "JetBrains Mono", Menlo, monospace; }
+  .wrap { display:grid; grid-template-columns: minmax(0,1.9fr) minmax(340px,1fr); gap:12px; padding:12px; max-width:1600px; margin:0 auto; }
+  @media (max-width:900px){ .wrap{ grid-template-columns:1fr; } }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px; }
+  h1 { font-size:20px; margin:0 0 4px; letter-spacing:.5px; }
+  .sub { color:var(--dim); font-size:13px; margin:0 0 8px; }
+  canvas { display:block; width:100%; image-rendering:pixelated; image-rendering:crisp-edges; border-radius:4px; }
+  /* how-to strip */
+  .howto { display:flex; gap:8px; margin:0 0 8px; flex-wrap:wrap; }
+  .howto div { flex:1; min-width:150px; background:#262a35; border-radius:6px; padding:6px 10px; font-size:14px; }
+  .howto b { display:inline-grid; place-items:center; width:22px; height:22px; border-radius:50%; background:var(--sweet); color:#14161c; margin-right:6px; }
+  /* tools */
+  .tools { display:grid; grid-template-columns:repeat(6, 1fr); gap:8px; margin:10px 0 8px; }
+  @media (max-width:700px){ .tools{ grid-template-columns:repeat(3,1fr); } }
+  .tool { font:inherit; background:#2a2e3a; color:var(--ink); border:2px solid #3a3f4d; border-radius:8px; padding:8px 4px; cursor:pointer;
+          display:flex; flex-direction:column; align-items:center; gap:4px; transition:transform .08s; }
+  .tool:hover { border-color:#6a7290; transform:translateY(-1px); }
+  .tool.on { background:#3a3424; border-color:var(--sweet); box-shadow:0 0 0 2px rgba(242,193,78,.25); }
+  .tool canvas, .tool .emo { width:44px; height:44px; }
+  .tool .emo { font-size:32px; line-height:44px; text-align:center; }
+  .tool .lab { font-size:15px; font-weight:bold; }
+  .tool .why { font-size:11px; color:var(--dim); text-align:center; }
+  .hint { font-size:16px; background:#262a35; border-left:4px solid var(--sweet); border-radius:4px; padding:8px 12px; }
+  .tag { display:inline-block; padding:2px 8px; border-radius:4px; font-size:12px; margin-top:8px; background:#3a3326; color:#d9b56a; }
+  /* right: the chain */
+  .step { border:1px solid var(--line); border-radius:8px; padding:6px 10px; transition:border-color .2s, box-shadow .2s; }
+  .step.live { border-color:var(--brain); box-shadow:0 0 0 2px rgba(88,214,141,.18); }
+  .step h2 { font-size:16px; margin:0; display:flex; align-items:center; gap:8px; }
+  .step h2 .num { display:inline-grid; place-items:center; width:22px; height:22px; border-radius:50%; background:#3a3f4d; font-size:13px; }
+  .step.live h2 .num { background:var(--brain); color:#14161c; }
+  .step h2 .right { margin-left:auto; font-size:12px; color:var(--dim); font-weight:normal; }
+  .step .say { font-size:13px; color:#c9c6bd; margin:2px 0 6px; }
+  .step .say small { color:var(--dim); }
+  .arrow { text-align:center; color:var(--dim); font-size:12px; line-height:12px; margin:1px 0; }
+  .bar { display:grid; grid-template-columns: 170px 1fr 50px; align-items:center; gap:8px; margin:2px 0; }
+  .bar .t { position:relative; height:12px; background:#262a35; border-radius:3px; overflow:visible; }
+  .bar .f { height:100%; width:0; border-radius:3px; transition:width .06s linear; }
+  .bar .thr { position:absolute; top:-3px; bottom:-3px; width:2px; background:#fff; opacity:.85; }
+  .bar .v { text-align:right; color:var(--dim); font-size:11px; }
+  .bar .n { font-size:13px; }
+  .bar .n small { color:var(--dim); font-size:10px; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .decision { font-size:20px; padding:10px 14px; border-radius:6px; background:#262a35; margin-top:8px; min-height:66px; border:2px solid #3a3f4d; }
+  .decision.hot { border-color:var(--brain); }
+  .decision small { display:block; color:var(--dim); font-size:11px; margin-top:3px; }
+  details { margin-top:8px; color:var(--dim); font-size:12px; }
+  summary { cursor:pointer; }
+
+  /* ---------- video mode (?video): 1080x1350, kitchen on top, brain + bars below, band at the bottom for subtitles ---------- */
+  body.video { width:1080px; height:1350px; overflow:hidden; font-size:20px; }
+  body.video .wrap { display:block; padding:0; max-width:none; }
+  body.video .card { border:none; border-radius:0; padding:0; background:var(--bg); }
+  body.video h1, body.video .howto, body.video .tools, body.video .hint, body.video .tag, body.video .sub, body.video details,
+  body.video #st1, body.video .arrow, body.video #st4 .say:last-child { display:none; }
+  body.video #room { border-radius:0; }
+  body.video .decision { margin:10px 16px 0; font-size:28px; height:122px; padding:12px 18px; overflow:hidden; }
+  body.video .decision small { font-size:17px; }
+  body.video .card + .card { display:grid; grid-template-columns:1fr 1fr; grid-template-areas:"in brain" "out out"; gap:10px; padding:10px 16px 0; }
+  body.video #st3 { grid-area:brain; } body.video #st4 { grid-area:out; } body.video #st2 { grid-area:in; }
+  body.video #st2 .say, body.video #st3 .say { display:none; }
+  body.video #outbars { display:grid; grid-template-columns:1fr 1fr; column-gap:24px; }
+  body.video #st3 canvas { margin-top:14px; }
+  body.video #st2 .bar { grid-template-columns: 250px 1fr 62px; }
+  body.video .step { padding:8px 12px; }
+  body.video .step h2 { font-size:22px; }
+  body.video .step .say { font-size:16px; margin:2px 0 6px; }
+  body.video .bar { grid-template-columns: 190px 1fr 62px; margin:4px 0; }
+  body.video .bar .n { font-size:18px; } body.video .bar .n small { font-size:12px; }
+  body.video .bar .v { font-size:15px; } body.video .bar .t { height:16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>🪰 Fly Brain Kitchen</h1>
+    <div class="howto">
+      <div><b>1</b>Pick a thing below</div>
+      <div><b>2</b>Click in the kitchen</div>
+      <div><b>3</b>Watch its real brain decide</div>
+    </div>
+    <canvas id="room" width="240" height="150"></canvas>
+    <div class="decision" id="decision"></div>
+    <div class="tools">
+      <button class="tool" data-tool="sugar"><canvas width="14" height="14"></canvas><span class="lab">Sugar</span><span class="why">yummy</span></button>
+      <button class="tool" data-tool="coffee"><canvas width="14" height="14"></canvas><span class="lab">Coffee</span><span class="why">bitter, yucky</span></button>
+      <button class="tool" data-tool="fan"><canvas width="14" height="14"></canvas><span class="lab">Fan</span><span class="why">blows wind</span></button>
+      <button class="tool" data-tool="swatter"><canvas width="14" height="14"></canvas><span class="lab">Swatter</span><span class="why">try to hit it!</span></button>
+      <button class="tool" data-tool="move"><span class="emo">✋</span><span class="lab">Move fly</span><span class="why">drag it</span></button>
+      <button class="tool" id="clear"><span class="emo">🧹</span><span class="lab">Clean up</span><span class="why">remove things</span></button>
+    </div>
+    <div class="hint" id="hint"></div>
+    <span class="tag">🎲 When the fly just walks around, that is random — not the brain.</span>
+  </div>
+
+  <div class="card">
+    <h1>Inside the fly's head</h1>
+    <p class="sub">A real fly brain, all ~139,000 neurons, played back slowly. Follow the signal from top to bottom.</p>
+
+    <div class="step" id="st1">
+      <h2><span class="num">1</span>👀 What it sees</h2>
+      <div class="say">Its eye is made of hundreds of tiny dots. <small>(a drawing of the eye, not the brain)</small></div>
+      <canvas id="eye" width="240" height="48"></canvas>
+    </div>
+    <div class="arrow">▼</div>
+    <div class="step" id="st2">
+      <h2><span class="num">2</span>👅 What it feels</h2>
+      <div class="say">Sense cells on its tongue, feelers and eyes start to buzz.</div>
+      <div id="inbars"></div>
+    </div>
+    <div class="arrow">▼</div>
+    <div class="step" id="st3">
+      <h2><span class="num">3</span>🧠 Its brain <span class="right" id="nact"></span></h2>
+      <div class="say">Every dot is one real neuron. <span style="color:var(--brain)">Green</span> = sending a signal right now.</div>
+      <canvas id="brain" width="240" height="80"></canvas>
+    </div>
+    <div class="arrow">▼</div>
+    <div class="step" id="st4">
+      <h2><span class="num">4</span>💪 What it decides</h2>
+      <div class="say">When a bar crosses the <b>white line</b>, the fly does it.</div>
+      <div id="outbars"></div>
+      <div class="say" style="margin:6px 0 0">The fly's answer is shown under the kitchen.</div>
+    </div>
+
+    <details>
+      <summary>For grown-ups: where this comes from</summary>
+      Every bar and dot is replayed from a real simulation run: Shiu et al. 2024 whole-brain leaky integrate-and-fire model on the FlyWire v783 connectome (~139k neurons), averaged over trials; neuron positions from FlyWire v783. The game only decides <i>which</i> run to play (what touched the fly) and where the fly walks. Brain time is slowed 3×. The white line (50 Hz) is our game rule. The eye view is simple geometry, not a brain model. Smells are left out: in this model every odour sets off a seizure-like storm across ~8,700 neurons.
+      <div id="btime" style="margin-top:4px"></div>
+    </details>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script>
+"use strict";
+const VIDEO = new URLSearchParams(location.search).has('video');
+if (VIDEO) {   // seeded random so every render of the film is identical
+  document.body.classList.add('video');
+  let seed = 15; Math.random = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+}
+// ---------- constants ----------
+const W = 240, H = 150, WALL = { x0: 8, y0: 16, x1: 232, y1: 142 };
+const SLOW = 3, THR = 50, NB = 50, BIN_MS = BRAIN.bins_ms, BAR_MAX = 160, TOUCH = 8;
+const IN = [ ['sweet', '🍬 sweet taste', 'sugar taste neurons', '--sweet'], ['bitter', '☕ bitter taste', 'bitter taste neurons', '--bitter'],
+             ['antenna', '🌬️ wind on feelers', 'Johnston\'s organ JO-C/E', '--antenna'], ['looming', '⚠️ something is coming!', 'looming detectors LPLC2', '--loom'] ];
+const OUT = [ ['feed', '🍬 eat', 'feeding neurons CB0700/0701', '--feed', true], ['escape', '💨 jump away', 'giant fiber DNp01', '--escape', true],
+              ['groom', '🧽 clean feelers', 'grooming DNg62/DNge078', '--groom', true], ['turn', '↪️ turn', 'steering DNa01/02, no action in game', '--turn', false] ];
+const TOOL_HINT = {
+  sugar: '🍬 Click <b>right next to the fly</b> to put down sugar. Will it eat?',
+  coffee: '☕ Drop coffee <b>on a sugar cube</b> to make it bitter. Will the fly still eat it?',
+  fan: '🌬️ Click to put a fan. It blows toward the middle of the kitchen.',
+  swatter: '🏸 Click anywhere in the kitchen to swing at the fly! Can you catch it?',
+  move: '✋ Drag the fly anywhere. Try dropping it on a sugar cube.',
+};
+
+// ---------- UI bars ----------
+function mkBars(el, defs) {
+  const o = {};
+  for (const [k, name, neu, col, thr] of defs) {
+    const d = document.createElement('div'); d.className = 'bar';
+    d.innerHTML = `<div class="n">${name}<small>${neu}</small></div><div class="t"><div class="f" style="background:var(${col})"></div>${thr ? `<div class="thr" style="left:${THR / BAR_MAX * 100}%"></div>` : ''}</div><div class="v">0 Hz</div>`;
+    el.appendChild(d); o[k] = { f: d.querySelector('.f'), v: d.querySelector('.v') };
+  }
+  return o;
+}
+const inBars = mkBars(document.getElementById('inbars'), IN);
+const outBars = mkBars(document.getElementById('outbars'), OUT);
+function setBar(b, hz) { b.f.style.width = Math.min(100, hz / BAR_MAX * 100) + '%'; b.v.textContent = Math.round(hz) + ' Hz'; }
+
+// ---------- world ----------
+const room = document.getElementById('room').getContext('2d');
+const eye = document.getElementById('eye').getContext('2d');
+const brainC = document.getElementById('brain').getContext('2d');
+let things = [];            // {type:'sugar'|'coffee'|'fan', x, y, dir, bitter, cool}
+let fly = { x: 120, y: 80, h: 0, state: 'wander', until: 0, jump: null };
+let swat = null;             // {x, y, cx, cy, t0, started, hit}
+let scene = null;            // {name, t0, decided, action, obj, peak}
+let outcome = null;          // {name, action, peak, until}  what the last brain run ended with
+let tool = 'sugar', now = 0;
+
+function smooth(arr, i, w = 3) { let s = 0, n = 0; for (let j = Math.max(0, i - w + 1); j <= i; j++) { s += arr[j]; n++; } return s / n; }
+
+function startScene(name, obj) {
+  scene = { name, t0: now, decided: false, action: null, obj, peak: {} };
+  outcome = null;
+  fly.state = 'brain';
+}
+function sceneBin() { return Math.floor((now - scene.t0) / SLOW / BIN_MS); }
+
+function act(action) {
+  scene.action = action;
+  if (action === 'escape') {
+    const ang = Math.random() * Math.PI * 2, d = 55 + Math.random() * 30;
+    let tx = fly.x + Math.cos(ang) * d, ty = fly.y + Math.sin(ang) * d;
+    tx = Math.max(WALL.x0 + 8, Math.min(WALL.x1 - 8, tx)); ty = Math.max(WALL.y0 + 8, Math.min(WALL.y1 - 8, ty));
+    fly.jump = { x0: fly.x, y0: fly.y, x1: tx, y1: ty, t0: now, dur: 450 };
+    fly.state = 'jump';
+  } else if (action === 'feed') { fly.state = 'eat'; }
+  else if (action === 'groom') { fly.state = 'groom'; }
+}
+
+function endScene() {
+  const obj = scene && scene.obj; if (obj) obj.cool = now + 7000;
+  if (fly.state === 'eat' || fly.state === 'groom') fly.until = now + 2500;
+  else if (fly.state !== 'jump') { fly.state = 'wander'; }
+  outcome = { name: scene.name, action: scene.action, peak: scene.peak, until: now + 4000 };
+  scene = null;
+}
+
+// ---------- input ----------
+function setTool(t) {
+  tool = t;
+  document.querySelectorAll('[data-tool]').forEach(x => x.classList.toggle('on', x.dataset.tool === t));
+  document.getElementById('hint').innerHTML = TOOL_HINT[t];
+}
+document.querySelectorAll('[data-tool]').forEach(b => b.onclick = () => setTool(b.dataset.tool));
+setTool('sugar');
+document.getElementById('clear').onclick = () => { things = []; };
+const roomEl = document.getElementById('room');
+function toWorld(e) { const r = roomEl.getBoundingClientRect(); return [ (e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H ]; }
+let dragging = false;
+roomEl.addEventListener('pointerdown', e => {
+  const [x, y] = toWorld(e);
+  if (x < WALL.x0 || x > WALL.x1 || y < WALL.y0 || y > WALL.y1) return;
+  if (tool === 'move') { dragging = true; fly.x = x; fly.y = y; if (scene) endScene(); fly.state = 'wander'; things.forEach(t => t.cool = 0); return; }
+  if (tool === 'swatter') {
+    if (swat || fly.state === 'jump') return;
+    swat = { x: fly.x - 80, y: fly.y - 6, t0: now, hit: false, started: false };   // approaches from the fly's left, like the simulated left LPLC2
+    return;   // the brain run starts when the swatter gets close enough to loom (see update)
+  }
+  if (tool === 'coffee') {
+    const s = things.find(t => t.type === 'sugar' && Math.hypot(t.x - x, t.y - y) < 9);
+    if (s) {
+      s.bitter = true;
+      if (scene && scene.obj === s) { scene = null; startScene('sugar+coffee', s); }   // fly on this cube: replay the bitter-sugar run
+      else if (fly.state === 'eat' && Math.hypot(s.x - fly.x, s.y - fly.y) < 12) { startScene('sugar+coffee', s); }
+      return;
+    }
+  }
+  const t = { type: tool, x, y, cool: 0 };
+  if (tool === 'fan') t.dir = Math.atan2(80 - y, 120 - x);
+  things.push(t);
+});
+roomEl.addEventListener('pointermove', e => { if (dragging) { const [x, y] = toWorld(e); fly.x = x; fly.y = y; } });
+addEventListener('pointerup', () => dragging = false);
+
+// ---------- simulation of the (non-brain) body ----------
+function inFan(f) {
+  const dx = fly.x - f.x, dy = fly.y - f.y, d = Math.hypot(dx, dy);
+  let da = Math.atan2(dy, dx) - f.dir; da = Math.atan2(Math.sin(da), Math.cos(da));
+  return d < 70 && d > 6 && Math.abs(da) < 0.38;
+}
+function update(dt) {
+  if (fly.state === 'wander' && !dragging) {
+    fly.h += (Math.random() - .5) * 4 * dt;
+    const sp = 16;
+    let nx = fly.x + Math.cos(fly.h) * sp * dt, ny = fly.y + Math.sin(fly.h) * sp * dt;
+    if (nx < WALL.x0 + 6 || nx > WALL.x1 - 6) { fly.h = Math.PI - fly.h; nx = fly.x; }
+    if (ny < WALL.y0 + 6 || ny > WALL.y1 - 6) { fly.h = -fly.h; ny = fly.y; }
+    fly.x = nx; fly.y = ny;
+    // contact -> brain
+    for (const t of things) {
+      if (t.cool > now) continue;
+      if (t.type === 'sugar' && Math.hypot(t.x - fly.x, t.y - fly.y) < TOUCH) { fly.x = t.x - 2; fly.y = t.y + 7; fly.h = -Math.PI / 2; startScene(t.bitter ? 'sugar+coffee' : 'sugar', t); break; }
+      if (t.type === 'coffee' && Math.hypot(t.x - fly.x, t.y - fly.y) < TOUCH) { startScene('coffee', t); break; }
+      if (t.type === 'fan' && inFan(t)) { startScene('fan', t); break; }
+    }
+  }
+  if ((fly.state === 'eat' || fly.state === 'groom') && !scene && now > fly.until) fly.state = 'wander';
+  if (fly.state === 'jump') {
+    const j = fly.jump, p = Math.min(1, (now - j.t0) / j.dur);
+    fly.x = j.x0 + (j.x1 - j.x0) * p; fly.y = j.y0 + (j.y1 - j.y0) * p - Math.sin(p * Math.PI) * 18;
+    fly.h = Math.atan2(j.y1 - j.y0, j.x1 - j.x0);
+    if (p >= 1) { fly.state = scene ? 'brain' : 'wander'; }
+  }
+  if (scene) {
+    const b = sceneBin(), s = BRAIN.scenes[scene.name];
+    if (b < NB) for (const [k] of OUT) scene.peak[k] = Math.max(scene.peak[k] || 0, smooth(s.out[k], b));
+    if (!scene.decided && b < NB) {
+      for (const k of ['escape', 'feed', 'groom']) if (smooth(s.out[k], b) > THR) { scene.decided = true; act(k); break; }
+    }
+    if (b >= NB) { if (!scene.decided) fly.state = 'wander'; endScene(); }
+  }
+  if (swat) {
+    const p = (now - swat.t0) / 1300;
+    if (p < 1) { swat.cx = swat.x + 80 * p; swat.cy = swat.y + 6 * p; }
+    else if (!swat.hit) { swat.hit = now; swat.caught = Math.hypot(fly.x - swat.cx, fly.y - swat.cy) < 10; }
+    if (p >= 0.6 && !swat.started && fly.state !== 'jump') {   // looming onset: the swatter now fills a big, fast-growing patch of the eye
+      swat.started = true;
+      const eating = fly.state === 'eat' || (scene && scene.name.startsWith('sugar'));
+      if (scene) endScene();
+      startScene(eating ? 'sugar+swatter' : 'swatter', null);
+    }
+    if (swat.hit && now - swat.hit > 900) swat = null;
+  }
+}
+
+// ---------- drawing: room ----------
+function px(ctx, x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), w, h); }
+function drawRoom() {
+  const c = room;
+  px(c, 0, 0, W, H, '#3b2f2a');                                 // outer walls
+  px(c, 0, 0, W, WALL.y0, '#d9cdb4');                           // back wall
+  for (let x = 0; x < W; x += 12) px(c, x, 0, 1, WALL.y0, '#cbbd9f');
+  px(c, 150, 3, 34, 10, '#7fb3d9'); px(c, 166, 3, 2, 10, '#d9cdb4'); px(c, 150, 7, 34, 1, '#d9cdb4');  // window
+  px(c, 18, 2, 40, 12, '#8a8f9c'); px(c, 20, 4, 16, 8, '#2b2f38'); px(c, 40, 4, 16, 8, '#2b2f38');     // stove
+  for (let y = WALL.y0; y < WALL.y1; y += 8) for (let x = WALL.x0; x < WALL.x1; x += 8)
+    px(c, x, y, 8, 8, ((x + y) / 8) % 2 ? '#b8a07a' : '#ad946d');                                      // floor tiles
+  px(c, 60, 50, 120, 60, '#7a5236'); px(c, 60, 50, 120, 3, '#8f6343'); px(c, 60, 107, 120, 3, '#5e3e28'); // table
+  px(c, WALL.x0 - 2, WALL.y0, 2, WALL.y1 - WALL.y0, '#5a4636'); px(c, WALL.x1, WALL.y0, 2, WALL.y1 - WALL.y0, '#5a4636');
+  for (const t of things) drawThing(c, t, true);
+}
+function drawThing(c, t, live) {
+  if (t.type === 'sugar') {
+    px(c, t.x - 5, t.y - 5, 10, 10, '#f6f4ee'); px(c, t.x - 5, t.y + 3, 10, 2, '#cfcac0'); px(c, t.x + 3, t.y - 5, 2, 10, '#dcd7cc');
+    px(c, t.x - 4, t.y - 4, 2, 2, '#ffffff');
+    if (t.bitter) { px(c, t.x - 3, t.y - 2, 5, 3, '#6b4426'); px(c, t.x, t.y + 1, 3, 2, '#6b4426'); }
+  } else if (t.type === 'coffee') {
+    px(c, t.x - 5, t.y - 3, 10, 7, '#4a2e1a'); px(c, t.x - 3, t.y - 5, 7, 10, '#4a2e1a'); px(c, t.x - 2, t.y - 2, 3, 2, '#7a5236');
+  } else if (t.type === 'fan') {
+    px(c, t.x - 6, t.y - 6, 12, 12, '#5d6270'); px(c, t.x - 5, t.y - 5, 10, 10, '#8a8f9c'); px(c, t.x - 1, t.y - 1, 2, 2, '#3b3f4a');
+    const a = live ? now / 60 : .6;
+    px(c, t.x + Math.cos(a) * 3 - 1, t.y + Math.sin(a) * 3 - 1, 3, 3, '#e8e6df');
+    px(c, t.x - Math.cos(a) * 3 - 1, t.y - Math.sin(a) * 3 - 1, 3, 3, '#e8e6df');
+    if (live) for (let i = 0; i < 7; i++) {                              // airflow streaks
+      const r = 8 + ((now / 12 + i * 23) % 62), sp = (i - 3) * 0.1;
+      const ax = t.x + Math.cos(t.dir + sp) * r, ay = t.y + Math.sin(t.dir + sp) * r;
+      px(c, ax, ay, 3, 1, 'rgba(220,240,255,.6)');
+    }
+  }
+}
+// pixel fly: rotate a sprite pixel-by-pixel so it stays crisp; drawn at 2x
+const FLY = [ // [dx, dy, colour]  (facing +x)
+  ...[[-3,0],[-2,0],[-1,0],[0,0],[-2,-1],[-1,-1],[-2,1],[-1,1]].map(p => [...p, '#2a2420']), // abdomen+thorax
+  [1, 0, '#3a2f28'], [2, -1, '#c0392b'], [2, 1, '#c0392b'], [2, 0, '#3a2f28'],              // head + red eyes
+  [-1,-2,'#cfe3ee'], [-2,-2,'#cfe3ee'], [-3,-2,'#b8d0de'], [-1,2,'#cfe3ee'], [-2,2,'#cfe3ee'], [-3,2,'#b8d0de'] // wings
+];
+const S = 2;
+function drawFlySprite(c, x, y, h, flap) {
+  const ca = Math.cos(h), sa = Math.sin(h);
+  for (const [dx, dy, col] of FLY) {
+    const wy = flap && Math.abs(dy) === 2 ? dy * 1.5 : dy;
+    px(c, x + (dx * ca - wy * sa) * S - 1, y + (dx * sa + wy * ca) * S - 1, S, S, col);
+  }
+}
+function drawFly() {
+  const c = room, ca = Math.cos(fly.h), sa = Math.sin(fly.h);
+  if (fly.state === 'jump') px(c, fly.jump.x1 - 4, fly.jump.y1 + 2, 8, 2, 'rgba(0,0,0,.25)');
+  drawFlySprite(c, fly.x, fly.y, fly.h, (fly.state === 'wander' || fly.state === 'jump') && Math.floor(now / 40) % 2);
+  if (fly.state === 'eat' && Math.floor(now / 150) % 2) px(c, fly.x + 7 * ca - 1, fly.y + 7 * sa - 1, 2, 2, '#f2c14e');       // proboscis
+  if (fly.state === 'groom') { const f = Math.floor(now / 90) % 2 * 2; px(c, fly.x + (7 + f) * ca - 2 * sa, fly.y + (7 + f) * sa + 2 * ca, 2, 2, '#6cc4d9'); px(c, fly.x + (7 + f) * ca + 2 * sa, fly.y + (7 + f) * sa - 2 * ca, 2, 2, '#6cc4d9'); }
+}
+// thought bubble: only shows what the brain run produced
+function bubbleText() {
+  if (scene) {
+    if (scene.action === 'feed') return ['YUM!', '#f2c14e'];
+    if (scene.action === 'escape') return ['!!!', '#e5534b'];
+    if (scene.action === 'groom') return ['scrub', '#6cc4d9'];
+    return ['?', '#e8e6df'];
+  }
+  if (fly.state === 'eat') return ['YUM!', '#f2c14e'];
+  if (fly.state === 'groom') return ['scrub', '#6cc4d9'];
+  if (outcome && now < outcome.until && !outcome.action) {
+    if (outcome.name === 'fan') return ['hmm?', '#6cc4d9'];
+    return ['no thanks', '#b07a4a'];
+  }
+  return null;
+}
+function drawBubble() {
+  const b = bubbleText(); if (!b) return;
+  const c = room; c.font = 'bold 8px monospace';
+  const w = Math.ceil(c.measureText(b[0]).width) + 6, x = Math.round(Math.min(WALL.x1 - w, Math.max(WALL.x0, fly.x - w / 2))), y = Math.round(fly.y - 22);
+  px(c, x, y, w, 11, '#14161c'); px(c, x + 1, y + 1, w - 2, 9, '#262a35');
+  px(c, fly.x - 1, y + 11, 3, 2, '#14161c'); px(c, fly.x, y + 13, 1, 2, '#14161c');
+  c.fillStyle = b[1]; c.fillText(b[0], x + 3, y + 8.5);
+}
+function drawSwatter() {
+  if (!swat) return; const c = room, x = swat.cx ?? swat.x, y = swat.cy ?? swat.y;
+  px(c, x - 34, y + 3, 26, 3, '#8a5a2b');
+  px(c, x - 9, y - 6, 16, 18, '#2f6fb0'); for (let i = 0; i < 16; i += 4) px(c, x - 9 + i, y - 6, 1, 18, '#25578a');
+  if (swat.hit) { c.font = 'bold 9px monospace'; c.fillStyle = '#14161c'; c.fillText('MISSED!', x - 19, y - 9); c.fillStyle = '#ffffff'; c.fillText('MISSED!', x - 20, y - 10); }
+}
+// tool icons, drawn with the same pixel art as the kitchen
+function drawIcons() {
+  for (const b of document.querySelectorAll('.tool[data-tool] canvas')) {
+    const c = b.getContext('2d'), t = b.parentElement.dataset.tool;
+    if (t === 'swatter') { px(c, 0, 8, 6, 2, '#8a5a2b'); px(c, 5, 2, 9, 11, '#2f6fb0'); for (let i = 0; i < 9; i += 3) px(c, 5 + i, 2, 1, 11, '#25578a'); }
+    else drawThing(c, { type: t, x: 7, y: 7, dir: 0 }, false);
+  }
+}
+drawIcons();
+
+// ---------- drawing: compound eye (geometric ray-cast, ~5.5° per column) ----------
+const EC = 52, ER = 11, EH = 48;
+function hitCircle(ox, oy, dx, dy, cx, cy, r) {
+  const fx = ox - cx, fy = oy - cy, b = fx * dx + fy * dy, cc = fx * fx + fy * fy - r * r, disc = b * b - cc;
+  if (disc < 0) return Infinity; const t = -b - Math.sqrt(disc); return t > 0 ? t : Infinity;
+}
+function drawEye() {
+  const c = eye, cw = 240 / EC, ch = EH / ER;
+  px(c, 0, 0, 240, EH, '#0b0c10');
+  const objs = things.map(t => ({ x: t.x, y: t.y, r: t.type === 'fan' ? 6 : 5, col: t.type === 'sugar' ? (t.bitter ? '#b89a7a' : '#f6f4ee') : t.type === 'coffee' ? '#4a2e1a' : '#8a8f9c', hgt: t.type === 'fan' ? 1.4 : .6 }));
+  if (swat) objs.push({ x: (swat.cx ?? swat.x), y: (swat.cy ?? swat.y) + 3, r: 9, col: '#2f6fb0', hgt: 3.5 });
+  for (let i = 0; i < EC; i++) {
+    const a = fly.h + (i / (EC - 1) - .5) * (330 * Math.PI / 180) * -1;
+    const dx = Math.cos(a), dy = Math.sin(a);
+    const tx = dx > 0 ? (WALL.x1 - fly.x) / dx : dx < 0 ? (WALL.x0 - fly.x) / dx : Infinity;
+    const ty = dy > 0 ? (WALL.y1 - fly.y) / dy : dy < 0 ? (WALL.y0 - fly.y) / dy : Infinity;
+    const dw = Math.min(tx, ty), wallBack = ty < tx && dy < 0;
+    let best = { d: dw, col: wallBack ? '#d9cdb4' : '#b9a98c', hgt: 6 };
+    for (const o of objs) { const d = hitCircle(fly.x, fly.y, dx, dy, o.x, o.y, o.r); if (d < best.d) best = { d, col: o.col, hgt: o.hgt }; }
+    const horizon = ER / 2;
+    for (let j = 0; j < ER; j++) {
+      const rel = (horizon - j - .5);
+      let col = j >= horizon ? '#a08664' : '#3b3f4a';                     // floor / dim ceiling
+      const top = Math.min(ER, best.hgt * 9 / Math.max(best.d, 2) * ER / 4);
+      const wallTop = Math.min(ER, 6 * 9 / Math.max(dw, 2) * ER / 4);
+      if (rel > 0 && rel < wallTop) col = wallBack ? '#d9cdb4' : '#b9a98c';
+      if (rel > -2 && rel < top && best.d < dw) col = best.col;
+      c.fillStyle = col; c.beginPath(); c.arc(i * cw + cw / 2, j * ch + ch / 2, Math.min(cw, ch) / 2 - .3, 0, 7); c.fill();
+    }
+  }
+  px(c, 119.5, 0, 1, EH, 'rgba(255,255,255,.12)');
+}
+
+// ---------- drawing: brain + bars + decision ----------
+const DONE = {  // what to say when a run ends without any bar crossing the line
+  'sugar+coffee': o => `☕ Yuck, bitter! The brain did <b>not</b> say “eat”.<small>feeding neurons only reached ${Math.round(o.peak.feed || 0)} Hz, below the line</small>`,
+  coffee: o => `☕ Bitter taste. Nothing crossed the line, so the fly just walks on.<small>no output neuron reached 50 Hz</small>`,
+  fan: o => `🌬️ The brain felt the wind, but not enough to clean its feelers.<small>grooming neurons reached ${Math.round(o.peak.groom || 0)} Hz, below the 50 Hz line</small>`,
+};
+const SAYS = {
+  feed: s => `🍬 The brain says: <b>EAT!</b><small>feeding neurons crossed the line (peak ${s.out_mean_hz.feed} Hz, average of ${s.trials} runs)</small>`,
+  escape: s => `💨 The brain says: <b>JUMP AWAY!</b><small>the giant fiber neuron crossed the line (peak ${s.out_mean_hz.escape} Hz, average of ${s.trials} runs)</small>`,
+  groom: s => `🧽 The brain says: <b>CLEAN YOUR FEELERS!</b><small>grooming neurons crossed the line</small>`,
+};
+function drawBrain() {
+  const c = brainC, BH = 80; px(c, 0, 0, 240, BH, '#0b0c10');
+  c.fillStyle = 'rgba(140,150,170,.18)';
+  const P = (x, y) => [Math.round(10 + x * 220), Math.round(4 + y * (BH - 8))];
+  for (const [x, y] of BRAIN.background) { const [a, b] = P(x, y); c.fillRect(a, b, 1, 1); }
+  const vals = { in: {}, out: {} };
+  let n = 0;
+  if (scene) {
+    const s = BRAIN.scenes[scene.name], b = Math.min(NB - 1, sceneBin()), tms = (b + 1) * BIN_MS;
+    for (const [k] of IN) vals.in[k] = smooth(s.in[k], b);
+    for (const [k] of OUT) vals.out[k] = smooth(s.out[k], b);
+    for (const [x, y, t0, r] of s.points) {
+      if (t0 > tms) break; n++;
+      const a = Math.min(1, .25 + r / 120), [u, v] = P(x, y);
+      c.fillStyle = `rgba(88,214,141,${a})`; c.fillRect(u, v, r > 60 ? 2 : 1, r > 60 ? 2 : 1);
+    }
+    n = Math.round(n * s.active_total / s.points.length);
+    document.getElementById('nact').textContent = `${n.toLocaleString('en-US')} neurons firing`;
+    document.getElementById('btime').textContent = `Now playing: “${scene.name}” run, brain time ${Math.round(tms)} ms.`;
+  } else {
+    document.getElementById('nact').textContent = 'quiet';
+    document.getElementById('btime').textContent = '';
+  }
+  for (const [k] of IN) setBar(inBars[k], vals.in[k] || 0);
+  for (const [k] of OUT) setBar(outBars[k], vals.out[k] || 0);
+  // light up the steps the signal has reached
+  const eyeLive = !!swat, inLive = Object.values(vals.in).some(v => v > 5), brLive = n > 0, outLive = Object.values(vals.out).some(v => v > 5);
+  document.getElementById('st1').classList.toggle('live', eyeLive);
+  document.getElementById('st2').classList.toggle('live', inLive);
+  document.getElementById('st3').classList.toggle('live', brLive);
+  document.getElementById('st4').classList.toggle('live', outLive);
+
+  const dec = document.getElementById('decision');
+  let html;
+  if (scene) {
+    const s = BRAIN.scenes[scene.name];
+    html = scene.action ? SAYS[scene.action](s) : `🤔 The brain is thinking…<small>the signal is spreading through the brain</small>`;
+  } else if (fly.state === 'eat') html = `🍬 Eating!<small>the brain decided this</small>`;
+  else if (fly.state === 'groom') html = `🧽 Cleaning its feelers!<small>the brain decided this</small>`;
+  else if (fly.state === 'jump') html = `💨 Jumping away!<small>the brain decided this</small>`;
+  else if (outcome && now < outcome.until && !outcome.action && DONE[outcome.name]) html = DONE[outcome.name](outcome);
+  else if (swat) html = `🏸 Here comes the swatter…`;
+  else html = `<span style="color:var(--dim)">😴 Nothing is touching the fly, so its brain is quiet. Give it something!</span>`;
+  dec.classList.toggle('hot', !!(scene || fly.state === 'eat' || fly.state === 'groom' || fly.state === 'jump'));
+  if (dec.dataset.h !== html) { dec.innerHTML = html; dec.dataset.h = html; }
+}
+
+// ---------- loop ----------
+function render() { drawRoom(); drawFly(); drawSwatter(); drawBubble(); drawEye(); drawBrain(); }
+if (VIDEO) {
+  // video mode: the recorder drives the clock (deterministic, any speed); window.tick(ms) advances game time
+  window.tick = ms => { now += ms; update(ms / 1000); render(); };
+  render();
+} else {
+  let last = performance.now();
+  const frame = t => { const dt = Math.min(.05, (t - last) / 1000); last = t; now = t; update(dt); render(); requestAnimationFrame(frame); };
+  requestAnimationFrame(frame);
+}
+</script>
+</body>
+</html>
